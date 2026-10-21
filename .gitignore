@@ -1,0 +1,15 @@
+# Secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Local data (uploaded PDFs, vector database)
+data/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
