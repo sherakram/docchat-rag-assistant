@@ -9,10 +9,20 @@
 <body>
   <main class="card">
     <h1>Chat with Your Documents</h1>
-    <p class="muted">Milestone 1: frontend ↔ backend connection test</p>
+    <p class="muted">Milestone 2: PDF upload and text extraction</p>
 
-    <button id="check-btn" type="button">Check backend</button>
-    <p id="result" class="result" aria-live="polite">Not checked yet.</p>
+    <section>
+      <h2>Upload a PDF</h2>
+      <input id="file-input" type="file" accept="application/pdf,.pdf" />
+      <button id="upload-btn" type="button">Upload</button>
+      <div id="upload-result" class="result" aria-live="polite">No file uploaded yet.</div>
+    </section>
+
+    <section>
+      <h2>Backend status</h2>
+      <button id="check-btn" type="button">Check backend</button>
+      <p id="result" class="result" aria-live="polite">Not checked yet.</p>
+    </section>
   </main>
 
   <script src="app.js"></script>
