@@ -64,7 +64,7 @@ function showUploadSuccess(data) {
   const summary = document.createElement("div");
   summary.textContent =
     data.filename + ": " + data.page_count + " pages, " +
-    data.pages_with_text + " with text";
+    data.pages_with_text + " with text, " + data.chunk_count + " chunks";
 
   const preview = document.createElement("div");
   preview.className = "preview";
