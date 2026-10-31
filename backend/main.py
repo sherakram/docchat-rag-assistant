@@ -11,10 +11,11 @@ from backend.config import (
     MAX_UPLOAD_MB,
     UPLOAD_DIR,
 )
-from backend.schemas import ChunkPreview, UploadResponse
+from backend.schemas import ChunkPreview, SearchRequest, SearchResponse, UploadResponse
 from backend.services.chunker import chunk_pages
 from backend.services.embeddings import EmbeddingError, embed_texts
 from backend.services.pdf_loader import PDFError, extract_pages
+from backend.services.retriever import retrieve
 from backend.services.vector_store import add_chunks
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -33,18 +34,22 @@ def health():
 def upload_pdf(file: UploadFile = File(...)):
     original_name = file.filename or "document.pdf"
 
+    
     if not original_name.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only .pdf files are allowed.")
 
+    
     data = file.file.read(MAX_UPLOAD_BYTES + 1)
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=413, detail=f"File is too large (max {MAX_UPLOAD_MB} MB)."
         )
 
+    
     if not data.startswith(b"%PDF"):
         raise HTTPException(status_code=400, detail="This is not a valid PDF file.")
 
+    
     try:
         pages = extract_pages(data)
     except PDFError as exc:
@@ -57,6 +62,7 @@ def upload_pdf(file: UploadFile = File(...)):
             detail="No extractable text found. Scanned PDFs need OCR, which is not supported yet.",
         )
 
+    
     chunks = chunk_pages(pages, CHUNK_SIZE_WORDS, CHUNK_OVERLAP_WORDS)
     if not chunks:
         raise HTTPException(
@@ -64,13 +70,16 @@ def upload_pdf(file: UploadFile = File(...)):
             detail="This PDF has too little text to index.",
         )
 
+    
     doc_id = uuid.uuid4().hex
     try:
         vectors = embed_texts([c["text"] for c in chunks])
     except EmbeddingError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
 
+    
     add_chunks(doc_id, original_name, chunks, vectors)
+
 
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     (UPLOAD_DIR / f"{doc_id}.pdf").write_bytes(data)
@@ -94,6 +103,15 @@ def upload_pdf(file: UploadFile = File(...)):
             for c in chunks[:3]
         ],
     )
+
+
+@app.post("/api/search", response_model=SearchResponse)
+def search_documents(request: SearchRequest):
+    """Sawal ke liye qareebi chunks dhoondo (abhi LLM nahi, sirf retrieval)."""
+    try:
+        return retrieve(request.question, request.top_k, request.doc_id)
+    except EmbeddingError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
 
 
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

@@ -22,3 +22,6 @@ EMBED_BATCH_SIZE = 50
 
 CHROMA_DIR = BASE_DIR / "data" / "chroma"
 COLLECTION_NAME = "documents"
+
+TOP_K = 4
+MIN_SIMILARITY = 0.5
