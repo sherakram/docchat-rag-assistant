@@ -13,7 +13,9 @@ from backend.config import (
 )
 from backend.schemas import ChunkPreview, UploadResponse
 from backend.services.chunker import chunk_pages
+from backend.services.embeddings import EmbeddingError, embed_texts
 from backend.services.pdf_loader import PDFError, extract_pages
+from backend.services.vector_store import add_chunks
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
@@ -31,22 +33,18 @@ def health():
 def upload_pdf(file: UploadFile = File(...)):
     original_name = file.filename or "document.pdf"
 
-    # 1. Extension check
     if not original_name.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only .pdf files are allowed.")
 
-    # 2. Size check
     data = file.file.read(MAX_UPLOAD_BYTES + 1)
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=413, detail=f"File is too large (max {MAX_UPLOAD_MB} MB)."
         )
 
-    # 3. Magic bytes check: asli PDF hamesha %PDF se shuru hoti hai
     if not data.startswith(b"%PDF"):
         raise HTTPException(status_code=400, detail="This is not a valid PDF file.")
 
-    # 4. Text nikalo
     try:
         pages = extract_pages(data)
     except PDFError as exc:
@@ -59,7 +57,6 @@ def upload_pdf(file: UploadFile = File(...)):
             detail="No extractable text found. Scanned PDFs need OCR, which is not supported yet.",
         )
 
-    # 5. Chunks banao
     chunks = chunk_pages(pages, CHUNK_SIZE_WORDS, CHUNK_OVERLAP_WORDS)
     if not chunks:
         raise HTTPException(
@@ -67,8 +64,14 @@ def upload_pdf(file: UploadFile = File(...)):
             detail="This PDF has too little text to index.",
         )
 
-    # 6. Sab theek: file save karo (user ke diye naam se nahi, apne random id se)
     doc_id = uuid.uuid4().hex
+    try:
+        vectors = embed_texts([c["text"] for c in chunks])
+    except EmbeddingError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    add_chunks(doc_id, original_name, chunks, vectors)
+
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     (UPLOAD_DIR / f"{doc_id}.pdf").write_bytes(data)
 
