@@ -7,23 +7,47 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="card">
-    <h1>Chat with Your Documents</h1>
-    <p class="muted">Milestone 2: PDF upload and text extraction</p>
+  <div class="app">
+    <header class="topbar">
+      <h1>Chat with Your Documents</h1>
+      <button id="toggle-panel" class="ghost" type="button"
+              aria-expanded="false" aria-controls="side-panel">Documents</button>
+    </header>
 
-    <section>
-      <h2>Upload a PDF</h2>
-      <input id="file-input" type="file" accept="application/pdf,.pdf" />
-      <button id="upload-btn" type="button">Upload</button>
-      <div id="upload-result" class="result" aria-live="polite">No file uploaded yet.</div>
-    </section>
+    <div class="layout">
+      <aside id="side-panel" class="panel">
+        <h2>Your documents</h2>
+        <p class="muted small">
+          Text-based PDFs only (max 10 MB). Please upload only public or
+          non-sensitive files.
+        </p>
+        <input id="file-input" type="file" accept="application/pdf,.pdf"
+               aria-label="Choose a PDF file" />
+        <button id="upload-btn" type="button">Upload PDF</button>
+        <p id="upload-status" class="status" aria-live="polite"></p>
+        <ul id="doc-list" class="doc-list"></ul>
+      </aside>
 
-    <section>
-      <h2>Backend status</h2>
-      <button id="check-btn" type="button">Check backend</button>
-      <p id="result" class="result" aria-live="polite">Not checked yet.</p>
-    </section>
-  </main>
+      <main class="chat">
+        <div id="messages" class="messages" aria-label="Conversation" aria-live="polite">
+          <div id="empty" class="empty">
+            <h2>Ask your documents anything</h2>
+            <p class="muted">
+              Upload a PDF, then ask a question. Answers come only from your
+              documents, with page references.
+            </p>
+          </div>
+        </div>
+
+        <form id="chat-form" class="composer">
+          <label for="question" class="sr-only">Ask a question</label>
+          <textarea id="question" rows="1" maxlength="1000"
+                    placeholder="Ask a question about your documents..."></textarea>
+          <button id="send-btn" type="submit">Send</button>
+        </form>
+      </main>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>
