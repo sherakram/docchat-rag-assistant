@@ -25,3 +25,7 @@ COLLECTION_NAME = "documents"
 
 TOP_K = 4
 MIN_SIMILARITY = 0.5
+
+GEMINI_CHAT_MODEL = "gemini-3.5-flash-lite"
+
+LLM_TIMEOUT_SECONDS = 60

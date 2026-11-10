@@ -45,3 +45,22 @@ class SearchResponse(BaseModel):
     best_similarity: float | None
     threshold: float
     results: list[SearchHit]
+
+
+class ChatRequest(BaseModel):
+    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+    doc_id: str | None = None
+
+
+class Source(BaseModel):
+    filename: str
+    page: int
+    similarity: float
+    snippet: str
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    supported: bool
+    best_similarity: float | None
+    sources: list[Source]
