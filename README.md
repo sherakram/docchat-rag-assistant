@@ -6,4 +6,4 @@ documents, the app says so.
 
 **Stack:** Python, FastAPI, ChromaDB, Gemini API, HTML/CSS/JavaScript
 
-**Status:** 🚧 In development (Milestone 0 complete)
+**Status:** 🚧 In development (Milestone 7 complete)
