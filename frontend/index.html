@@ -2,53 +2,67 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chat with Your Documents</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0f24" />
+  <title>DocChat · Chat with your documents</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+<div class="shell">
+  <aside id="docs-panel" class="docs" aria-label="Documents">
+    <div class="docs-head">
+      <h2>Your documents</h2>
+      <button id="docs-close" class="icon-btn small" type="button" aria-label="Close documents">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <p class="muted small">Text-based PDFs only (max 10 MB). Upload only public or non-sensitive files.</p>
+    <label class="sr-only" for="file-input">Choose a PDF file</label>
+    <input id="file-input" type="file" accept="application/pdf,.pdf" />
+    <button id="upload-btn" class="primary" type="button">Upload PDF</button>
+    <p id="upload-status" class="status" aria-live="polite"></p>
+    <ul id="doc-list" class="doc-list"></ul>
+  </aside>
+
   <div class="app">
     <header class="topbar">
-      <h1>Chat with Your Documents</h1>
-      <button id="toggle-panel" class="ghost" type="button"
-              aria-expanded="false" aria-controls="side-panel">Documents</button>
+      <div class="logo" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+      </div>
+      <div class="brand">
+        <h1>DocChat</h1>
+        <p id="subtitle">No documents yet</p>
+      </div>
+      <button id="docs-btn" class="icon-btn" type="button" aria-expanded="false" aria-controls="docs-panel" aria-label="Documents">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span id="docs-count" class="count" hidden>0</span>
+      </button>
     </header>
 
-    <div class="layout">
-      <aside id="side-panel" class="panel">
-        <h2>Your documents</h2>
-        <p class="muted small">
-          Text-based PDFs only (max 10 MB). Please upload only public or
-          non-sensitive files.
-        </p>
-        <input id="file-input" type="file" accept="application/pdf,.pdf"
-               aria-label="Choose a PDF file" />
-        <button id="upload-btn" type="button">Upload PDF</button>
-        <p id="upload-status" class="status" aria-live="polite"></p>
-        <ul id="doc-list" class="doc-list"></ul>
-      </aside>
+    <main id="messages" class="messages" aria-live="polite">
+      <section id="empty" class="empty">
+        <h2>Chat with your documents</h2>
+        <p class="muted">Answers come only from your PDFs, with the exact pages as evidence.</p>
+        <button id="open-upload" class="primary" type="button">Upload a PDF</button>
+      </section>
+    </main>
 
-      <main class="chat">
-        <div id="messages" class="messages" aria-label="Conversation" aria-live="polite">
-          <div id="empty" class="empty">
-            <h2>Ask your documents anything</h2>
-            <p class="muted">
-              Upload a PDF, then ask a question. Answers come only from your
-              documents, with page references.
-            </p>
-          </div>
-        </div>
-
-        <form id="chat-form" class="composer">
-          <label for="question" class="sr-only">Ask a question</label>
-          <textarea id="question" rows="1" maxlength="1000"
-                    placeholder="Ask a question about your documents..."></textarea>
-          <button id="send-btn" type="submit">Send</button>
-        </form>
-      </main>
+    <div id="suggest" class="suggest" hidden>
+      <button type="button" class="chip" data-q="What is this document about?">What is this document about?</button>
+      <button type="button" class="chip" data-q="List the key points">List the key points</button>
     </div>
-  </div>
 
-  <script src="app.js"></script>
+    <form id="chat-form" class="composer">
+      <label for="question" class="sr-only">Ask a question</label>
+      <textarea id="question" rows="1" maxlength="1000" placeholder="Ask your documents…"></textarea>
+      <button id="send-btn" class="send" type="submit" aria-label="Send">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
+    </form>
+  </div>
+</div>
+<div id="backdrop" class="backdrop" hidden></div>
+<script src="app.js"></script>
 </body>
 </html>
