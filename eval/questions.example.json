@@ -1,0 +1,14 @@
+{
+  "in_scope": [
+    {
+      "question": "Replace with a question whose answer is on one specific page",
+      "filename": "your-document.pdf",
+      "pages": [1]
+    }
+  ],
+  "out_of_scope": [
+    "What is the capital of Australia?",
+    "How do I bake a chocolate cake?",
+    "Who won the 2018 football world cup?"
+  ]
+}
