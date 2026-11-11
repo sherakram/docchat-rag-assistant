@@ -5,11 +5,13 @@ const fileInput = $("file-input"), uploadBtn = $("upload-btn"), uploadStatus = $
 const docList = $("doc-list"), docsPanel = $("docs-panel"), docsBtn = $("docs-btn");
 const docsClose = $("docs-close"), backdrop = $("backdrop"), subtitle = $("subtitle");
 const docsCount = $("docs-count"), openUpload = $("open-upload");
+const scopeBar = $("scope-bar"), scopeEl = $("scope");
 
 let busy = false;
-let docCount = 0;
+let docs = [];
 let hasMessages = false;
 
+// ---------- Helpers ----------
 // Hamesha textContent: LLM ya PDF ka text HTML ban kar chal nahi sakta
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -20,9 +22,11 @@ function el(tag, className, text) {
 
 const scrollToBottom = () => { messagesEl.scrollTop = messagesEl.scrollHeight; };
 
-function setBusy(value) {
-  busy = value;
-  sendBtn.disabled = value;
+class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
 }
 
 function readError(data, status) {
@@ -31,9 +35,32 @@ function readError(data, status) {
   return "Something went wrong (status " + status + ").";
 }
 
+async function api(url, options) {
+  const response = await fetch(url, options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new ApiError(readError(data, response.status), response.status);
+  return data;
+}
+
 function friendlyError(error) {
   if (error instanceof TypeError) return "Could not reach the server. Is it running?";
   return error.message;
+}
+
+function setBusy(value) {
+  busy = value;
+  sendBtn.disabled = value;
+}
+
+function setStatus(message, cssClass) {
+  uploadStatus.className = "status " + (cssClass || "");
+  uploadStatus.textContent = message;
+}
+
+function formatDate(iso) {
+  if (!iso) return "";
+  const date = new Date(iso);
+  return isNaN(date) ? "" : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 // Thresholds sirf shuruaati andaza hain, apne scores dekh kar badal lena
@@ -43,16 +70,7 @@ function matchLabel(similarity) {
   return "Possible match";
 }
 
-function updateDocsUI() {
-  subtitle.textContent = docCount
-    ? "Grounded answers · " + docCount + (docCount === 1 ? " document" : " documents")
-    : "No documents yet";
-  docsCount.textContent = String(docCount);
-  docsCount.hidden = docCount === 0;
-  suggestEl.hidden = !(docCount > 0 && !hasMessages);
-}
-
-// ---------- Documents panel ----------
+// ---------- Documents panel (bottom sheet) ----------
 function setPanel(open) {
   docsPanel.classList.toggle("open", open);
   backdrop.hidden = !open;
@@ -70,7 +88,89 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-// ---------- Rendering ----------
+// ---------- Document list, scope, delete ----------
+function updateDocsUI() {
+  const count = docs.length;
+  subtitle.textContent = count
+    ? "Grounded answers · " + count + (count === 1 ? " document" : " documents")
+    : "No documents yet";
+  docsCount.textContent = String(count);
+  docsCount.hidden = count === 0;
+  suggestEl.hidden = !(count > 0 && !hasMessages);
+}
+
+function renderScope() {
+  const previous = scopeEl.value;
+  scopeEl.replaceChildren(new Option("All documents", ""));
+  docs.forEach((doc) => scopeEl.append(new Option(doc.filename, doc.doc_id)));
+  scopeEl.value = docs.some((d) => d.doc_id === previous) ? previous : "";
+  scopeBar.hidden = docs.length < 2; // scope sirf tab jab 2+ documents hon
+}
+
+function renderDocs() {
+  docList.replaceChildren();
+  docs.forEach((doc) => {
+    const item = el("li", "doc-item");
+
+    const info = el("div", "doc-info");
+    info.append(el("span", "doc-name", doc.filename));
+    const parts = [doc.page_count + " pages", doc.chunk_count + " chunks"];
+    const date = formatDate(doc.uploaded_at);
+    if (date) parts.push(date);
+    info.append(el("span", "meta", parts.join(" · ")));
+
+    const del = el("button", "del", "Delete");
+    del.type = "button";
+    del.setAttribute("aria-label", "Delete " + doc.filename);
+    del.addEventListener("click", () => onDeleteClick(doc, del));
+
+    item.append(info, del);
+    docList.append(item);
+  });
+}
+
+async function loadDocuments() {
+  try {
+    const data = await api("/api/documents");
+    docs = data.documents;
+  } catch (error) {
+    setStatus(friendlyError(error), "error");
+    return;
+  }
+  renderDocs();
+  renderScope();
+  updateDocsUI();
+}
+
+// Do-step delete: pehli click "Confirm?", 4 second ke andar doosri click par delete
+function onDeleteClick(doc, button) {
+  if (button.dataset.armed !== "1") {
+    button.dataset.armed = "1";
+    button.textContent = "Confirm?";
+    button.classList.add("armed");
+    setTimeout(() => {
+      if (!button.isConnected) return;
+      button.dataset.armed = "";
+      button.textContent = "Delete";
+      button.classList.remove("armed");
+    }, 4000);
+    return;
+  }
+  deleteDocument(doc, button);
+}
+
+async function deleteDocument(doc, button) {
+  button.disabled = true;
+  try {
+    await api("/api/documents/" + doc.doc_id, { method: "DELETE" });
+    setStatus("Deleted: " + doc.filename, "ok");
+  } catch (error) {
+    setStatus(friendlyError(error), "error");
+  }
+  await loadDocuments(); // list hamesha server se dobara lo
+}
+
+// ---------- Rendering messages ----------
 function addUserMessage(text) {
   const row = el("div", "msg user");
   row.append(el("div", "bubble", text));
@@ -158,18 +258,18 @@ async function sendQuestion(question) {
   const typing = showTyping();
 
   try {
-    const response = await fetch("/api/chat", {
+    const data = await api("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question, doc_id: scopeEl.value || null }),
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(readError(data, response.status));
     typing.remove();
     addAssistantMessage(data);
   } catch (error) {
     typing.remove();
     addError(friendlyError(error));
+    // Jis document par sawal tha wo gayab? List dobara lo, scope khud "All" par aa jayega
+    if (error instanceof ApiError && error.status === 404) await loadDocuments();
   } finally {
     setBusy(false);
     questionEl.focus();
@@ -204,11 +304,6 @@ suggestEl.addEventListener("click", (event) => {
 });
 
 // ---------- Upload ----------
-function setStatus(message, cssClass) {
-  uploadStatus.className = "status " + (cssClass || "");
-  uploadStatus.textContent = message;
-}
-
 uploadBtn.addEventListener("click", async () => {
   const file = fileInput.files[0];
   if (!file) {
@@ -223,18 +318,10 @@ uploadBtn.addEventListener("click", async () => {
   formData.append("file", file);
 
   try {
-    const response = await fetch("/api/upload", { method: "POST", body: formData });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(readError(data, response.status));
-
-    const item = el("li", "", data.filename);
-    item.append(el("span", "meta", data.page_count + " pages · " + data.chunk_count + " chunks"));
-    docList.append(item);
-
-    docCount += 1;
-    updateDocsUI();
-    setStatus("Ready: " + data.filename, "ok");
+    const data = await api("/api/upload", { method: "POST", body: formData });
     fileInput.value = "";
+    await loadDocuments();
+    setStatus("Ready: " + data.filename, "ok");
     setPanel(false);
   } catch (error) {
     setStatus(friendlyError(error), "error");
@@ -243,4 +330,5 @@ uploadBtn.addEventListener("click", async () => {
   }
 });
 
-updateDocsUI();
+// ---------- Start ----------
+loadDocuments();

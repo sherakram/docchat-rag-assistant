@@ -4,6 +4,10 @@ from pydantic import BaseModel, Field, StringConstraints
 
 from backend.config import TOP_K
 
+# doc_id hamesha 32 hex characters (uuid4().hex)
+DocId = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{32}$")]
+Question = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
 
 class ChunkPreview(BaseModel):
     chunk_index: int
@@ -24,8 +28,8 @@ class UploadResponse(BaseModel):
 
 
 class SearchRequest(BaseModel):
-    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
-    doc_id: str | None = None
+    question: Question
+    doc_id: DocId | None = None
     top_k: int = Field(default=TOP_K, ge=1, le=10)
 
 
@@ -48,8 +52,8 @@ class SearchResponse(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
-    doc_id: str | None = None
+    question: Question
+    doc_id: DocId | None = None
 
 
 class Source(BaseModel):
@@ -64,3 +68,19 @@ class ChatResponse(BaseModel):
     supported: bool
     best_similarity: float | None
     sources: list[Source]
+
+
+class DocumentInfo(BaseModel):
+    doc_id: str
+    filename: str
+    page_count: int
+    chunk_count: int
+    uploaded_at: str
+
+
+class DocumentListResponse(BaseModel):
+    documents: list[DocumentInfo]
+
+
+class DeleteResponse(BaseModel):
+    deleted: str

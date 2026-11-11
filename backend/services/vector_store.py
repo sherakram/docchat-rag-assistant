@@ -17,7 +17,15 @@ def _collection():
     )
 
 
-def add_chunks(doc_id: str, filename: str, chunks: list[dict], embeddings: list[list[float]]) -> None:
+def add_chunks(
+    doc_id: str,
+    filename: str,
+    chunks: list[dict],
+    embeddings: list[list[float]],
+    content_hash: str,
+    page_count: int,
+    uploaded_at: str,
+) -> None:
     _collection().add(
         ids=[f"{doc_id}_{c['chunk_index']}" for c in chunks],
         embeddings=embeddings,
@@ -28,6 +36,9 @@ def add_chunks(doc_id: str, filename: str, chunks: list[dict], embeddings: list[
                 "filename": filename,
                 "page": c["page"],
                 "chunk_index": c["chunk_index"],
+                "content_hash": content_hash,
+                "page_count": page_count,
+                "uploaded_at": uploaded_at,
             }
             for c in chunks
         ],
@@ -44,6 +55,42 @@ def count_for_doc(doc_id: str) -> int:
 
 def delete_doc(doc_id: str) -> None:
     _collection().delete(where={"doc_id": doc_id})
+
+
+def find_doc_by_hash(content_hash: str) -> dict | None:
+    """Agar yehi PDF pehle upload ho chuki hai to uska doc_id aur filename do."""
+    result = _collection().get(
+        where={"content_hash": content_hash}, limit=1, include=["metadatas"]
+    )
+    if result["ids"]:
+        meta = result["metadatas"][0]
+        return {"doc_id": meta["doc_id"], "filename": meta["filename"]}
+    return None
+
+
+def list_documents() -> list[dict]:
+    """Sab documents, naye pehle. Chunks ke metadata ko doc_id ke hisaab se jama karta hai."""
+    metadatas = _collection().get(include=["metadatas"])["metadatas"]
+
+    docs: dict[str, dict] = {}
+    for meta in metadatas:
+        doc = docs.setdefault(
+            meta["doc_id"],
+            {
+                "doc_id": meta["doc_id"],
+                "filename": meta["filename"],
+                "chunk_count": 0,
+                "page_count": 0,
+                # purani uploads mein ye keys nahi hotin
+                "uploaded_at": meta.get("uploaded_at", ""),
+            },
+        )
+        doc["chunk_count"] += 1
+        doc["page_count"] = max(
+            doc["page_count"], int(meta.get("page_count", 0)), int(meta["page"])
+        )
+
+    return sorted(docs.values(), key=lambda d: d["uploaded_at"], reverse=True)
 
 
 def peek(limit: int = 3) -> dict:
